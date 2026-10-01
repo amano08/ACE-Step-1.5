@@ -235,6 +235,7 @@
     "parallel_thinking_label": "חשיבה מקבילית",
     "parallel_thinking_info": "עיבוד דגימות אצווה במקביל ליצירה מהירה יותר.",
     "generate_btn": "🎵 צור מוזיקה",
+    "stop_btn": "⏹ Stop",
     "extract_stem_btn": "🎵 חלץ ערוץ (Stem)",
     "add_stem_btn": "🎵 הוסף ערוץ",
     "stem_area_controls": "🧩 אזור ערוץ חדש (שניות)",

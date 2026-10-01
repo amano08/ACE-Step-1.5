@@ -6,6 +6,8 @@ import gradio as gr
 
 from acestep.ui.gradio.i18n import t
 
+from .user_defaults import negative_prompt_default, remix_only
+
 
 def build_lora_controls() -> dict[str, Any]:
     """Create LoRA adapter controls for loading and scaling inference adapters.
@@ -17,7 +19,17 @@ def build_lora_controls() -> dict[str, Any]:
         A component map containing LoRA path, action buttons, toggles, and status controls.
     """
 
-    with gr.Accordion(t("generation.lora_accordion_title"), open=False, elem_classes=["has-info-container"]):
+    # LoRA never reaches the MLX decoder: convert_and_load() snapshots the torch
+    # weights once at startup (mlx_dit_init.py:28-31) and nothing in
+    # core/generation/handler/lora/ re-converts after an adapter is attached, so
+    # loading one reports success while changing nothing. Hidden rather than
+    # removed so the existing event wiring keeps resolving.
+    with gr.Accordion(
+        t("generation.lora_accordion_title"),
+        open=False,
+        visible=not remix_only(),
+        elem_classes=["has-info-container"],
+    ):
         with gr.Row():
             lora_path = gr.Textbox(
                 label=t("generation.lora_path_label"),
@@ -70,7 +82,14 @@ def build_lm_controls(service_mode: bool) -> dict[str, Any]:
         A component map containing LM sampling, CoT, negative prompt, and batch controls.
     """
 
-    with gr.Accordion(t("generation.advanced_lm_section"), open=False, elem_classes=["has-info-container"]):
+    # cover is in DIRECT_CONDITIONING_TASKS, so the 5Hz LM never runs and none of
+    # these controls (including lm_negative_prompt) reach the DiT.
+    with gr.Accordion(
+        t("generation.advanced_lm_section"),
+        open=False,
+        visible=not remix_only(),
+        elem_classes=["has-info-container"],
+    ):
         with gr.Row():
             lm_temperature = gr.Slider(
                 label=t("generation.lm_temperature_label"),
@@ -116,7 +135,7 @@ def build_lm_controls(service_mode: bool) -> dict[str, Any]:
         with gr.Row():
             lm_negative_prompt = gr.Textbox(
                 label=t("generation.lm_negative_prompt_label"),
-                value="NO USER INPUT",
+                value=negative_prompt_default("NO USER INPUT"),
                 placeholder=t("generation.lm_negative_prompt_placeholder"),
                 info=t("generation.lm_negative_prompt_info"),
                 elem_classes=["has-info-container"],

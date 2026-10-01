@@ -9,6 +9,7 @@ from acestep.ui.gradio.i18n import t
 
 from .generation_tab_simple_controls import build_simple_mode_controls
 from .generation_tab_source_controls import build_source_track_and_code_controls
+from .user_defaults import remix_only
 
 
 def build_mode_selector_controls(initial_mode_choices: list[str]) -> dict[str, Any]:
@@ -21,10 +22,11 @@ def build_mode_selector_controls(initial_mode_choices: list[str]) -> dict[str, A
         A component map containing ``generation_mode``, ``load_file``, and ``load_file_col``.
     """
 
-    with gr.Row(equal_height=True):
+    only_remix = remix_only()
+    with gr.Row(equal_height=True, visible=not only_remix):
         generation_mode = gr.Radio(
-            choices=initial_mode_choices,
-            value="Custom",
+            choices=["Remix"] if only_remix else initial_mode_choices,
+            value="Remix" if only_remix else "Custom",
             label=t("generation.mode_label"),
             info=t("generation.mode_info_custom"),
             elem_classes=["has-info-container"],
@@ -55,7 +57,10 @@ def build_hidden_generation_state() -> dict[str, Any]:
         A component map containing hidden task/instruction fields and Gradio state objects.
     """
 
-    task_type = gr.State(value="text2music")
+    # The mode radio's .change event is what normally syncs these two States, and
+    # it never fires when the radio is hidden, so seed them for Remix directly.
+    only_remix = remix_only()
+    task_type = gr.State(value="cover" if only_remix else "text2music")
     instruction_display_gen = gr.Textbox(
         label=t("generation.instruction_label"),
         value=DEFAULT_DIT_INSTRUCTION,
@@ -67,7 +72,7 @@ def build_hidden_generation_state() -> dict[str, Any]:
     )
     simple_sample_created = gr.State(value=False)
     lyrics_before_instrumental = gr.State(value="")
-    previous_generation_mode = gr.State(value="Custom")
+    previous_generation_mode = gr.State(value="Remix" if only_remix else "Custom")
     return {
         "task_type": task_type,
         "instruction_display_gen": instruction_display_gen,

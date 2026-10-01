@@ -1,11 +1,27 @@
 """Secondary generation-tab controls (cover, custom prompt, repaint)."""
 
+from pathlib import Path
 from typing import Any
 
 import gradio as gr
 
 from acestep.ui.gradio.help_content import create_help_button
 from acestep.ui.gradio.i18n import t
+
+from .user_defaults import (
+    audio_cover_strength_default,
+    caption_default,
+    cover_noise_strength_default,
+    reference_audio_default,
+    remix_only,
+)
+
+_DEFAULT_CAPTION_FILE = Path(__file__).resolve().parents[4] / "default_caption.txt"
+
+
+def _default_caption() -> str:
+    """Prefill the caption box from ACESTEP_DEFAULT_CAPTION_FILE, else default_caption.txt."""
+    return caption_default(_DEFAULT_CAPTION_FILE)
 
 
 def build_cover_strength_controls() -> dict[str, Any]:
@@ -18,32 +34,36 @@ def build_cover_strength_controls() -> dict[str, Any]:
         A component map containing audio/code strength sliders and remix help group.
     """
 
+    # Mirrors the Remix branch of compute_mode_ui_updates at build time, since the
+    # mode radio that would normally push those updates is hidden.
+    only_remix = remix_only()
     audio_cover_strength = gr.Slider(
         minimum=0.0,
         maximum=1.0,
-        value=1.0,
+        value=audio_cover_strength_default(0.35),
         step=0.01,
-        label=t("generation.codes_strength_label"),
-        info=t("generation.codes_strength_info"),
+        label=t("generation.remix_strength_label") if only_remix else t("generation.codes_strength_label"),
+        info=t("generation.remix_strength_info") if only_remix else t("generation.codes_strength_info"),
         elem_classes=["has-info-container"],
         visible=True,
     )
-    with gr.Group(visible=False) as remix_help_group:
+    with gr.Group(visible=only_remix) as remix_help_group:
         create_help_button("generation_remix")
         no_fsq = gr.Checkbox(
-            label="no_fsq",
+            label=t("generation.no_fsq_label"),
             value=False,
-            info="Use source-audio latents directly instead of FSQ-quantized audio codes.",
+            info=t("generation.no_fsq_info"),
+            elem_classes=["has-info-container"],
         )
     cover_noise_strength = gr.Slider(
         minimum=0.0,
         maximum=1.0,
-        value=0.0,
+        value=cover_noise_strength_default(0.5),
         step=0.01,
         label=t("generation.cover_noise_strength_label"),
         info=t("generation.cover_noise_strength_info"),
         elem_classes=["has-info-container"],
-        visible=False,
+        visible=only_remix,
     )
     return {
         "audio_cover_strength": audio_cover_strength,
@@ -71,6 +91,13 @@ def build_custom_mode_controls() -> dict[str, Any]:
                     label=t("generation.reference_audio"),
                     type="filepath",
                     show_label=True,
+                    value=reference_audio_default(),
+                )
+                # gr.Audio has no ``info=`` parameter (gradio 6.2), so the
+                # explanation goes in a caption below the widget.
+                gr.Markdown(
+                    t("generation.reference_audio_info"),
+                    elem_classes=["audio-hint"],
                 )
             with gr.Column(scale=8):
                 with gr.Row(equal_height=True):
@@ -78,6 +105,9 @@ def build_custom_mode_controls() -> dict[str, Any]:
                         captions = gr.Textbox(
                             label=t("generation.caption_label"),
                             placeholder=t("generation.caption_placeholder"),
+                            value=_default_caption(),
+                            info=t("generation.caption_info"),
+                            elem_classes=["has-info-container"],
                             lines=12,
                             max_lines=12,
                         )
@@ -91,13 +121,18 @@ def build_custom_mode_controls() -> dict[str, Any]:
                         lyrics = gr.Textbox(
                             label=t("generation.lyrics_label"),
                             placeholder=t("generation.lyrics_placeholder"),
+                            value="[Instrumental]",
+                            info=t("generation.lyrics_info"),
+                            elem_classes=["has-info-container"],
                             lines=12,
                             max_lines=12,
                         )
                         with gr.Row(elem_classes="instrumental-row"):
                             instrumental_checkbox = gr.Checkbox(
                                 label=t("generation.instrumental_label"),
-                                value=False,
+                                value=True,
+                                info=t("generation.instrumental_info"),
+                                elem_classes=["has-info-container"],
                                 scale=1,
                             )
                             format_lyrics_btn = gr.Button(

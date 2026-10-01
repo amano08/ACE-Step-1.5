@@ -37,6 +37,8 @@ from loguru import logger
 from tqdm import tqdm
 from transformers.cache_utils import DynamicCache, EncoderDecoderCache
 
+from acestep.generation_stop import raise_if_stopped
+
 from .apg_guidance import MomentumBuffer
 from .flow_edit_helpers import (
     apply_cfg_branch,
@@ -133,6 +135,7 @@ def flowedit_sampling_loop(
         return out[0], out[1]
 
     for step_idx, (t_curr, t_prev) in enumerate(iterator):
+        raise_if_stopped()
         if step_idx < n_min_step:
             continue
         t_curr_f = float(t_curr)

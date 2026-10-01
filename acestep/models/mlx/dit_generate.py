@@ -25,6 +25,8 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 from tqdm import tqdm
 
+from acestep.generation_stop import raise_if_stopped
+
 logger = logging.getLogger(__name__)
 
 VALID_SAMPLER_MODES = {"euler", "heun"}
@@ -182,6 +184,8 @@ def mlx_generate_diffusion(
     cfg_interval_start: float = 0.0,
     cfg_interval_end: float = 1.0,
     audio_cover_strength: float = 1.0,
+    cover_noise_strength: float = 0.0,
+    src_latents_np: Optional[np.ndarray] = None,
     encoder_hidden_states_non_cover_np: Optional[np.ndarray] = None,
     context_latents_non_cover_np: Optional[np.ndarray] = None,
     retake_seed: Optional[Union[int, List[int]]] = None,
@@ -222,6 +226,14 @@ def mlx_generate_diffusion(
         cfg_interval_start: timestep ratio below which CFG is disabled.
         cfg_interval_end: timestep ratio above which CFG is disabled.
         audio_cover_strength: cover strength (0-1).
+        cover_noise_strength: How much of the source latent survives the
+            initial state (0 = start from pure noise, 1 = start closest to the
+            source).  Requires ``src_latents_np``.  Mirrors the PyTorch path in
+            ``modeling_acestep_v15_xl_base.generate_audio``: the sampler starts
+            partway down the timestep schedule from a partially-renoised source
+            instead of at t=1 from pure noise.
+        src_latents_np: [B, T, C] source latents, only needed when
+            ``cover_noise_strength > 0``.
         encoder_hidden_states_non_cover_np: optional [B, enc_L, D] for non-cover.
         context_latents_non_cover_np: optional [B, T, C] for non-cover.
         compile_model: If True, compile the decoder step with ``mx.compile``.
@@ -321,6 +333,40 @@ def mlx_generate_diffusion(
     t_schedule_list = get_timestep_schedule(shift, timesteps, infer_steps=infer_steps)
     num_steps = len(t_schedule_list)
 
+    # ---- Cover-noise initialisation ----
+    # Port of the PyTorch branch in ``generate_audio``: instead of denoising
+    # from pure noise at t=1, start partway down the schedule from a source
+    # latent that has been renoised to exactly that timestep.  This is what
+    # preserves the source waveform (an img2img-style denoising strength);
+    # ``audio_cover_strength`` cannot do it, since it only decides at which
+    # step the source *conditioning* is dropped.
+    #
+    # ``get_timestep_schedule`` returns the descending schedule without the
+    # trailing 0, so it corresponds to PyTorch's ``t[:-1]`` and the step count
+    # after truncation matches PyTorch's ``len(t[start_idx:]) - 1``.
+    xt_init = noise
+    if cover_noise_strength > 0.0:
+        if src_latents_np is None:
+            logger.warning(
+                "[MLX-DiT] cover_noise_strength=%.3f requested but src_latents_np is None; "
+                "starting from pure noise.", cover_noise_strength
+            )
+        else:
+            # cover_noise_strength=1 means closest to src, so noise level is low.
+            effective_noise_level = 1.0 - cover_noise_strength
+            nearest_t = min(t_schedule_list, key=lambda x: abs(x - effective_noise_level))
+            start_idx = t_schedule_list.index(nearest_t)
+            t_schedule_list = t_schedule_list[start_idx:]
+            num_steps = len(t_schedule_list)
+            src_mx = mx.array(src_latents_np)
+            # renoise: xt = t * noise + (1 - t) * src
+            xt_init = nearest_t * noise + (1.0 - nearest_t) * src_mx
+            logger.info(
+                "[MLX-DiT] Cover mode: cover_noise_strength=%.3f, effective_noise_level=%.4f, "
+                "nearest_t=%.4f, remaining_steps=%d",
+                cover_noise_strength, effective_noise_level, nearest_t, num_steps,
+            )
+
     cover_steps = int(num_steps * audio_cover_strength)
 
     # ---- Prepare decoder step (compiled or plain with KV cache) ----
@@ -349,7 +395,7 @@ def mlx_generate_diffusion(
     else:
         cache = MLXCrossAttentionCache() if _compiled_step is None else None
 
-    xt = noise
+    xt = xt_init
     prev_vt = None  # for EMA smoothing
 
     def _model_eval(x_input, t_val, enc, ctx_in, step_cache):
@@ -415,6 +461,7 @@ def mlx_generate_diffusion(
         )
 
     for step_idx in tqdm(range(num_steps), desc="MLX DiT diffusion", disable=disable_tqdm):
+        raise_if_stopped()
         current_t = t_schedule_list[step_idx]
 
         # Switch to non-cover conditions when appropriate

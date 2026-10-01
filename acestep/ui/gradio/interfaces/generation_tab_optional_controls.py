@@ -7,6 +7,8 @@ import gradio as gr
 from acestep.constants import VALID_LANGUAGES
 from acestep.ui.gradio.i18n import t
 
+from .user_defaults import bpm_default, duration_default, keyscale_default, timesig_default
+
 
 def build_optional_parameter_controls(
     max_duration: float,
@@ -26,6 +28,13 @@ def build_optional_parameter_controls(
         A component map containing optional metadata fields and auto-toggle controls.
     """
 
+    # An env-provided value means the user pinned that field, so it starts manual
+    # (Auto unchecked + editable) instead of being cleared by the Auto handler.
+    bpm_value = bpm_default()
+    keyscale_value = keyscale_default()
+    timesig_value = timesig_default()
+    duration_value = duration_default()
+
     with gr.Accordion(
         t("generation.optional_params"),
         open=True,
@@ -35,28 +44,28 @@ def build_optional_parameter_controls(
         with gr.Row():
             bpm = gr.Number(
                 label=t("generation.bpm_label"),
-                value=None,
+                value=bpm_value,
                 step=1,
                 info=t("generation.bpm_info"),
                 elem_classes=["has-info-container"],
-                interactive=False,
+                interactive=bpm_value is not None,
             )
             key_scale = gr.Textbox(
                 label=t("generation.keyscale_label"),
                 placeholder=t("generation.keyscale_placeholder"),
-                value="",
+                value=keyscale_value,
                 info=t("generation.keyscale_info"),
                 elem_classes=["has-info-container"],
-                interactive=False,
+                interactive=bool(keyscale_value),
             )
             time_signature = gr.Dropdown(
                 choices=["", "2", "3", "4", "6", "N/A"],
-                value="",
+                value=timesig_value,
                 label=t("generation.timesig_label"),
                 allow_custom_value=True,
                 info=t("generation.timesig_info"),
                 elem_classes=["has-info-container"],
-                interactive=False,
+                interactive=bool(timesig_value),
             )
             vocal_language = gr.Dropdown(
                 choices=[(lang if lang != "unknown" else "Instrumental / auto", lang) for lang in VALID_LANGUAGES],
@@ -70,19 +79,19 @@ def build_optional_parameter_controls(
         with gr.Row(elem_classes=["auto-toggles-row"]):
             bpm_auto = gr.Checkbox(
                 label=t("generation.bpm_auto_label"),
-                value=True,
+                value=bpm_value is None,
                 container=False,
                 elem_classes=["auto-toggle"],
             )
             key_auto = gr.Checkbox(
                 label=t("generation.key_auto_label"),
-                value=True,
+                value=not keyscale_value,
                 container=False,
                 elem_classes=["auto-toggle"],
             )
             timesig_auto = gr.Checkbox(
                 label=t("generation.timesig_auto_label"),
-                value=True,
+                value=not timesig_value,
                 container=False,
                 elem_classes=["auto-toggle"],
             )
@@ -92,17 +101,20 @@ def build_optional_parameter_controls(
                 container=False,
                 elem_classes=["auto-toggle"],
             )
+        # These toggles are built with container=False, so Gradio renders no
+        # info container for them; the explanation goes in a row caption.
+        gr.Markdown(t("generation.auto_toggles_info"), elem_classes=["field-hint"])
         with gr.Row():
             audio_duration = gr.Number(
                 label=t("generation.duration_label"),
-                value=-1,
+                value=duration_value if duration_value is not None else -1,
                 minimum=-1,
                 maximum=float(max_duration),
                 step=0.1,
                 info=t("generation.duration_info")
                 + f" (Max: {max_duration}s / {max_duration // 60} min)",
                 elem_classes=["has-info-container"],
-                interactive=False,
+                interactive=duration_value is not None,
             )
             batch_size_input = gr.Number(
                 label=t("generation.batch_size_label"),
@@ -117,11 +129,12 @@ def build_optional_parameter_controls(
         with gr.Row(elem_classes=["auto-toggles-row"]):
             duration_auto = gr.Checkbox(
                 label=t("generation.duration_auto_label"),
-                value=True,
+                value=duration_value is None,
                 container=False,
                 elem_classes=["auto-toggle"],
             )
             gr.HTML("<span></span>")
+        gr.Markdown(t("generation.duration_auto_info"), elem_classes=["field-hint"])
         reset_all_auto_btn = gr.Button(t("generation.reset_all_auto"), variant="secondary", size="sm")
 
     return {

@@ -7,6 +7,7 @@ import gradio as gr
 import torch
 from loguru import logger
 
+from acestep.generation_stop import clear_stop
 from acestep.ui.gradio.events.results.batch_management_helpers import (
     _build_saved_params,
     _extract_scores,
@@ -68,6 +69,7 @@ def generate_with_batch_management(
 ):
     """Wrap ``generate_with_progress`` with batch queue management state."""
     _ = generation_params_state  # reserved for API compatibility with wiring/state outputs
+    clear_stop()
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
