@@ -8,6 +8,8 @@ from acestep.constants import TRACK_NAMES
 from acestep.ui.gradio.help_content import create_help_button
 from acestep.ui.gradio.i18n import t
 
+from .user_defaults import remix_only, source_audio_default
+
 
 def build_source_audio_controls() -> dict[str, Any]:
     """Create source-audio controls used by remix/repaint/extract flows.
@@ -19,8 +21,21 @@ def build_source_audio_controls() -> dict[str, Any]:
         A component map containing ``src_audio_row``, ``src_audio``, ``analyze_btn``, and ``extract_help_group``.
     """
 
-    with gr.Row(equal_height=True, visible=False) as src_audio_row:
-        src_audio = gr.Audio(label=t("generation.source_audio"), type="filepath", scale=10)
+    # Remix conditions the DiT on this upload, so it must already be visible at
+    # startup when the mode radio is hidden.
+    with gr.Row(equal_height=True, visible=remix_only()) as src_audio_row:
+        with gr.Column(scale=10):
+            src_audio = gr.Audio(
+                label=t("generation.source_audio"),
+                type="filepath",
+                value=source_audio_default(),
+            )
+            # gr.Audio has no ``info=`` parameter (gradio 6.2), so the
+            # explanation goes in a caption below the widget.
+            gr.Markdown(
+                t("generation.source_audio_info"),
+                elem_classes=["audio-hint"],
+            )
         with gr.Column(scale=1, min_width=80):
             analyze_btn = gr.Button(
                 t("generation.analyze_btn"),
@@ -82,10 +97,12 @@ def build_lm_code_hint_controls() -> dict[str, Any]:
         A component map containing LM code hint controls and action buttons.
     """
 
+    # These hints feed the 5Hz LM, which ``cover`` skips entirely
+    # (``DIRECT_CONDITIONING_TASKS``), so they are dead controls in Remix-only mode.
     with gr.Accordion(
         t("generation.lm_codes_hints"),
         open=False,
-        visible=True,
+        visible=not remix_only(),
         elem_classes=["has-info-container"],
     ) as text2music_audio_codes_group:
         with gr.Row(equal_height=True):

@@ -7,6 +7,8 @@ import gradio as gr
 from acestep.gpu_config import get_global_gpu_config
 from acestep.ui.gradio.i18n import t
 
+from .user_defaults import remix_only
+
 
 def _build_left_generate_toggles(
     lm_initialized: bool,
@@ -23,17 +25,22 @@ def _build_left_generate_toggles(
     """
 
     save_memory = get_global_gpu_config().save_memory_mode
+    # Remix skips the LM, so Think has nothing to run; mode_ui forces it off for
+    # cover anyway, and here the mode radio is hidden and cannot do that.
+    only_remix = remix_only()
     with gr.Column(scale=1, variant="compact"):
         think_checkbox = gr.Checkbox(
             label=t("generation.think_label"),
-            value=lm_initialized,
-            visible=True,
+            value=False if only_remix else lm_initialized,
+            visible=not only_remix,
             scale=1,
-            interactive=lm_initialized,
+            interactive=False if only_remix else lm_initialized,
         )
         auto_score = gr.Checkbox(
             label=t("generation.auto_score_label"),
             value=False,
+            info=t("generation.auto_score_info"),
+            elem_classes=["has-info-container"],
             scale=1,
             interactive=not service_mode and not save_memory,
         )
@@ -55,12 +62,16 @@ def _build_right_generate_toggles(service_mode: bool) -> tuple[gr.Checkbox, gr.C
         autogen_checkbox = gr.Checkbox(
             label=t("generation.autogen_label"),
             value=False,
+            info=t("generation.autogen_info"),
+            elem_classes=["has-info-container"],
             scale=1,
             interactive=not service_mode,
         )
         auto_lrc = gr.Checkbox(
             label=t("generation.auto_lrc_label"),
             value=False,
+            info=t("generation.auto_lrc_info"),
+            elem_classes=["has-info-container"],
             scale=1,
             interactive=not service_mode and not save_memory,
         )
@@ -100,11 +111,18 @@ def build_generate_row_controls(
                 interactive=generate_btn_interactive,
                 elem_id="acestep-generate-btn",
             )
+        with gr.Column(scale=3, min_width=80, elem_classes="icon-btn-wrap"):
+            stop_btn = gr.Button(
+                t("generation.stop_btn"),
+                variant="stop",
+                size="lg",
+            )
         autogen_checkbox, auto_lrc = _build_right_generate_toggles(service_mode=service_mode)
     return {
         "think_checkbox": think_checkbox,
         "auto_score": auto_score,
         "generate_btn": generate_btn,
+        "stop_btn": stop_btn,
         "generate_btn_row": generate_btn_row,
         "autogen_checkbox": autogen_checkbox,
         "auto_lrc": auto_lrc,

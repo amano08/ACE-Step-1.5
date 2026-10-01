@@ -13,6 +13,7 @@ from typing import Any
 import gradio as gr
 
 from acestep.ui.gradio.help_content import create_help_button
+from acestep.ui.gradio.i18n import t
 
 
 def build_variation_morph_controls() -> dict[str, Any]:
@@ -38,19 +39,24 @@ def build_variation_morph_controls() -> dict[str, Any]:
             with gr.Column(scale=1, min_width=200) as flow_edit_column:
                 with gr.Row():
                     retake_enabled = gr.Checkbox(
-                        label="Retake", value=False, scale=8,
+                        label=t("generation.retake_label"), value=False, scale=8,
+                        info=t("generation.retake_enabled_info"),
+                        elem_classes=["has-info-container"],
                     )
                     create_help_button("generation_retake")
                 with gr.Group(visible=False) as retake_panel:
                     with gr.Row():
                         retake_variance = gr.Slider(
                             minimum=0.0, maximum=1.0, step=0.01, value=0.0,
-                            label="variance", scale=2,
-                            info="0=baseline; 0.05–0.15 subtle; 0.5+ strong.",
+                            label=t("generation.retake_variance_label"), scale=2,
+                            info=t("generation.retake_variance_info"),
+                            elem_classes=["has-info-container"],
                         )
                         retake_seed = gr.Textbox(
-                            label="seed", value="", scale=1,
+                            label=t("generation.retake_seed_label"), value="", scale=1,
                             placeholder="empty=random",
+                            info=t("generation.retake_seed_info"),
+                            elem_classes=["has-info-container"],
                         )
                     retake_think_warning = gr.Markdown(
                         "⚠️ **Think is on — Retake will mix LM drift with "
@@ -66,7 +72,9 @@ def build_variation_morph_controls() -> dict[str, Any]:
             with gr.Column(scale=1, min_width=200):
                 with gr.Row():
                     flow_edit_morph = gr.Checkbox(
-                        label="Edit", value=False, scale=8,
+                        label=t("generation.flow_edit_label"), value=False, scale=8,
+                        info=t("generation.flow_edit_morph_info"),
+                        elem_classes=["has-info-container"],
                     )
                     create_help_button("generation_edit")
                 with gr.Group(visible=False) as morph_panel:
@@ -79,25 +87,35 @@ def build_variation_morph_controls() -> dict[str, Any]:
                         flow_edit_source_caption = gr.Textbox(
                             label="source caption",
                             placeholder="Describe the ORIGINAL audio.",
+                            info=t("generation.flow_edit_source_caption_info"),
+                            elem_classes=["has-info-container"],
                             lines=4, max_lines=8, scale=1,
                         )
                         flow_edit_source_lyrics = gr.Textbox(
                             label="source lyrics",
                             placeholder="Original lyrics; top-level lyrics is the target.",
+                            info=t("generation.flow_edit_source_lyrics_info"),
+                            elem_classes=["has-info-container"],
                             lines=4, max_lines=8, scale=1,
                         )
                     with gr.Row():
                         flow_edit_n_min = gr.Slider(
                             minimum=0.0, maximum=1.0, value=0.0, step=0.05,
                             label="n_min",
+                            info=t("generation.flow_edit_n_min_info"),
+                            elem_classes=["has-info-container"],
                         )
                         flow_edit_n_max = gr.Slider(
                             minimum=0.0, maximum=1.0, value=1.0, step=0.05,
                             label="n_max",
+                            info=t("generation.flow_edit_n_max_info"),
+                            elem_classes=["has-info-container"],
                         )
                         flow_edit_n_avg = gr.Slider(
                             minimum=1, maximum=8, value=1, step=1,
                             label="n_avg",
+                            info=t("generation.flow_edit_n_avg_info"),
+                            elem_classes=["has-info-container"],
                         )
         # Visibility chains.
         retake_enabled.change(

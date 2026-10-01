@@ -15,6 +15,7 @@ from acestep.constants import (
     GENERATION_MODES_TURBO,
     GENERATION_MODES_BASE,
 )
+from acestep.ui.gradio.interfaces.user_defaults import inference_steps_default
 
 
 def _has_token(token: str, path: str) -> bool:
@@ -91,6 +92,28 @@ def is_xl_model(config_path_lower: str) -> bool:
     return _has_token("xl", config_path_lower)
 
 
+def _apply_startup_overrides(cfg: dict) -> dict:
+    """Overlay the launch-script step / CFG defaults onto a model's UI config.
+
+    ``get_ui_control_config`` is the single source feeding both the interactive
+    build and the model-change handler, so overriding here keeps a saved preset
+    from being reset when the model is reloaded. Unset env vars leave the
+    per-model values untouched.
+
+    Args:
+        cfg: Control config produced for the detected model type.
+
+    Returns:
+        The same dict, with any env-var overrides applied in place.
+    """
+    steps = inference_steps_default()
+    if steps is not None:
+        cfg["inference_steps_value"] = max(
+            cfg["inference_steps_minimum"], min(steps, cfg["inference_steps_maximum"])
+        )
+    return cfg
+
+
 def get_ui_control_config(is_turbo: bool, is_pure_base: bool = False, is_sft: bool = False) -> dict:
     """Return UI control configuration (values, limits, visibility) for model type.
 
@@ -112,7 +135,7 @@ def get_ui_control_config(is_turbo: bool, is_pure_base: bool = False, is_sft: bo
         mode_choices = GENERATION_MODES_TURBO
 
     if is_turbo:
-        return {
+        return _apply_startup_overrides({
             "inference_steps_value": 8,
             "inference_steps_maximum": 20,
             "inference_steps_minimum": 1,
@@ -125,11 +148,11 @@ def get_ui_control_config(is_turbo: bool, is_pure_base: bool = False, is_sft: bo
             "cfg_interval_end_visible": False,
             "task_type_choices": task_choices,
             "generation_mode_choices": mode_choices,
-        }
+        })
     else:
         # SFT models use 50 steps; pure base / unknown models use 32.
         steps = 50 if is_sft else 32
-        return {
+        return _apply_startup_overrides({
             "inference_steps_value": steps,
             "inference_steps_maximum": 200,
             "inference_steps_minimum": 1,
@@ -142,7 +165,7 @@ def get_ui_control_config(is_turbo: bool, is_pure_base: bool = False, is_sft: bo
             "cfg_interval_end_visible": True,
             "task_type_choices": task_choices,
             "generation_mode_choices": mode_choices,
-        }
+        })
 
 
 def get_model_type_ui_settings(is_turbo: bool, current_mode: str | None = None, is_pure_base: bool = False, is_sft: bool = False):

@@ -140,6 +140,19 @@ def create_gradio_interface(dit_handler, llm_handler, dataset_handler, init_para
             line-height: 1.4;
         }
 
+        /* Caption under gr.Audio widgets. gr.Audio takes no info= parameter,
+           so these explanations are plain Markdown and are shown inline
+           instead of as a hover tooltip. */
+        /* .field-hint carries the same caption style for controls built with
+           container=False (the Auto toggles), which Gradio renders without an
+           info container at all. */
+        .audio-hint, .audio-hint p, .field-hint, .field-hint p {
+            font-size: 0.75rem !important;
+            line-height: 1.45 !important;
+            opacity: 0.6;
+            margin: 2px 0 0 0 !important;
+        }
+
         /* --- On-hover Tooltips --- */
         /* Safely ensure parents don't clip the tooltips using the container class */
         .has-info-container {
@@ -343,7 +356,10 @@ def create_gradio_interface(dit_handler, llm_handler, dataset_handler, init_para
                 
                 # Results Section (inside the Generation tab, wrapped for visibility control)
                 with gr.Column(visible=True) as results_wrapper:
-                    results_section = create_results_section(dit_handler)
+                    results_section = create_results_section(
+                        dit_handler,
+                        default_batch_size=(init_params or {}).get("default_batch_size") or 2,
+                    )
                 # Store the wrapper in gen_section so event handlers can toggle it
                 gen_section["results_wrapper"] = results_wrapper
             

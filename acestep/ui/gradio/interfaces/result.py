@@ -6,6 +6,8 @@ import gradio as gr
 from acestep.ui.gradio.i18n import t
 from acestep.ui.gradio.help_content import create_help_button
 
+from .user_defaults import remix_only
+
 
 def _create_audio_column(n, visible=True):
     """Create a single audio sample column with all its sub-components.
@@ -32,7 +34,10 @@ def _create_audio_column(n, visible=True):
             )
             send_to_repaint_btn = gr.Button(
                 t("results.send_to_repaint_btn"),
-                variant="secondary", size="sm", scale=1
+                variant="secondary", size="sm", scale=1,
+                # Repaint is not a selectable mode in remix-only UI, so this
+                # button would leave the form in a state the radio cannot express.
+                visible=not remix_only(),
             )
             save_btn = gr.Button(
                 t("results.save_btn"),
@@ -94,8 +99,15 @@ def _create_audio_column(n, visible=True):
     }
 
 
-def create_results_section(dit_handler) -> dict:
-    """Create results display section"""
+def create_results_section(dit_handler, default_batch_size: int = 2) -> dict:
+    """Create results display section.
+
+    Args:
+        default_batch_size: Number of sample columns shown before the user
+            touches the batch size control.  Without this the layout always
+            opened with two columns, so a ``--batch_size 1`` run still showed
+            an empty "sample 2" slot.
+    """
     with gr.Accordion(t("results.title"), open=True):
         create_help_button("results")
         # Hidden state to store LM-generated metadata
@@ -115,10 +127,10 @@ def create_results_section(dit_handler) -> dict:
         with gr.Row():
             cols_1_4 = []
             for i in range(1, 5):
-                cols_1_4.append(_create_audio_column(i, visible=(i <= 2)))
-        
+                cols_1_4.append(_create_audio_column(i, visible=(i <= default_batch_size)))
+
         # Row 2: samples 5-8 (initially hidden)
-        with gr.Row(visible=False) as audio_row_5_8:
+        with gr.Row(visible=default_batch_size > 4) as audio_row_5_8:
             cols_5_8 = []
             for i in range(5, 9):
                 cols_5_8.append(_create_audio_column(i, visible=True))
