@@ -243,6 +243,7 @@
     "parallel_thinking_label": "PensamentoParalelo",
     "parallel_thinking_info": "Ao gerar múltiplas amostras (tamanho de lote > 1), processa todo o raciocínio do LM em paralelo em vez de um por um. Mais rápido, mas usa mais VRAM. Desative se tiver erros de falta de memória com lotes grandes.",
     "generate_btn": "🎵 Gerar Música",
+    "stop_btn": "⏹ Stop",
     "extract_stem_btn": "🎵 Extrair Stem",
     "add_stem_btn": "🎵 Adicionar Stem",
     "stem_area_controls": "🧩 Nova Área de Stem (segundos)",

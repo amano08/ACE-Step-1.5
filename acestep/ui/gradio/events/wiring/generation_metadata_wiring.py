@@ -7,7 +7,7 @@ and caption/lyrics formatting flows.
 from typing import Any, Sequence
 
 from .. import generation_handlers as gen_h
-from .context import GenerationWiringContext
+from .context import GPU_CONCURRENCY_ID, GenerationWiringContext
 from .generation_text_format_wiring import register_generation_text_format_handlers
 
 
@@ -28,6 +28,7 @@ def register_generation_metadata_handlers(
         fn=lambda src: gen_h.convert_src_audio_to_codes_wrapper(dit_handler, src),
         inputs=[generation_section["lm_codes_audio_upload"]],
         outputs=[generation_section["text2music_audio_code_string"]],
+        concurrency_id=GPU_CONCURRENCY_ID,
     )
 
     # ========== Analyze Source Audio (Remix/Repaint: convert to codes + transcribe) ==========
@@ -49,6 +50,7 @@ def register_generation_metadata_handlers(
             generation_section["time_signature"],
             results_section["is_format_caption_state"],
         ],
+        concurrency_id=GPU_CONCURRENCY_ID,
     ).then(
         fn=gen_h.uncheck_auto_for_populated_fields,
         inputs=list(auto_checkbox_inputs),
@@ -125,6 +127,7 @@ def register_generation_metadata_handlers(
             generation_section["time_signature"],
             results_section["is_format_caption_state"],
         ],
+        concurrency_id=GPU_CONCURRENCY_ID,
     ).then(
         fn=gen_h.uncheck_auto_for_populated_fields,
         inputs=list(auto_checkbox_inputs),

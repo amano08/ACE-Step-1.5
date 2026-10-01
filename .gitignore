@@ -261,3 +261,6 @@ docs/.vitepress/dist/
 docs/.vitepress/cache/
 docs/en/awesome.md
 package-lock.json
+# Local generation artifacts (session reflow)
+output/
+outputs/

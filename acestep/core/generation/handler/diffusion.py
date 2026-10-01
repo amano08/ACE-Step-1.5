@@ -31,6 +31,7 @@ class DiffusionMixin:
         cfg_interval_start: float = 0.0,
         cfg_interval_end: float = 1.0,
         audio_cover_strength: float = 1.0,
+        cover_noise_strength: float = 0.0,
         encoder_hidden_states_non_cover=None,
         encoder_attention_mask_non_cover=None,
         context_latents_non_cover=None,
@@ -67,6 +68,8 @@ class DiffusionMixin:
             cfg_interval_start: Timestep ratio below which CFG is disabled.
             cfg_interval_end: Timestep ratio above which CFG is disabled.
             audio_cover_strength: Blend factor for cover conditioning.
+            cover_noise_strength: Fraction of the source latent retained in the
+                sampler's initial state (0 = pure noise, 1 = closest to source).
             encoder_hidden_states_non_cover: Optional non-cover conditioning tensor.
             encoder_attention_mask_non_cover: Unused; accepted for API compatibility.
             context_latents_non_cover: Optional non-cover context latent tensor.
@@ -121,6 +124,12 @@ class DiffusionMixin:
         enc_np = encoder_hidden_states.detach().cpu().float().numpy()
         ctx_np = context_latents.detach().cpu().float().numpy()
         src_shape = (src_latents.shape[0], src_latents.shape[1], src_latents.shape[2])
+        # Only materialised when cover-noise init needs the actual values;
+        # otherwise the shape alone is enough to draw the noise.
+        src_np = (
+            src_latents.detach().cpu().float().numpy()
+            if cover_noise_strength > 0.0 else None
+        )
 
         enc_nc_np = (
             encoder_hidden_states_non_cover.detach().cpu().float().numpy()
@@ -167,6 +176,8 @@ class DiffusionMixin:
             cfg_interval_start=cfg_interval_start,
             cfg_interval_end=cfg_interval_end,
             audio_cover_strength=audio_cover_strength,
+            cover_noise_strength=cover_noise_strength,
+            src_latents_np=src_np,
             encoder_hidden_states_non_cover_np=enc_nc_np,
             context_latents_non_cover_np=ctx_nc_np,
             retake_seed=retake_seed,

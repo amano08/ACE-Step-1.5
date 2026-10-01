@@ -4,8 +4,10 @@ This module isolates the primary generation-button click chain that clears
 outputs, runs batched generation, and schedules background pre-generation.
 """
 
+from acestep.generation_stop import request_stop
+
 from .. import results_handlers as res_h
-from .context import GenerationWiringContext
+from .context import GPU_CONCURRENCY_ID, GenerationWiringContext
 
 
 def register_generation_run_handlers(context: GenerationWiringContext) -> None:
@@ -44,7 +46,7 @@ def register_generation_run_handlers(context: GenerationWiringContext) -> None:
 
         yield from res_h.generate_with_batch_management(dit_handler, llm_handler, *args)
 
-    generation_section["generate_btn"].click(
+    clear_event = generation_section["generate_btn"].click(
         fn=res_h.clear_audio_outputs_for_new_generation,
         outputs=[
             results_section["generated_audio_1"],
@@ -57,7 +59,8 @@ def register_generation_run_handlers(context: GenerationWiringContext) -> None:
             results_section["generated_audio_8"],
             results_section["generated_audio_batch"],
         ],
-    ).then(
+    )
+    generation_event = clear_event.then(
         fn=generation_wrapper,
         inputs=[
             generation_section["captions"],
@@ -196,7 +199,9 @@ def register_generation_run_handlers(context: GenerationWiringContext) -> None:
             results_section["next_batch_status"],
             results_section["restore_params_btn"],
         ],
-    ).then(
+        concurrency_id=GPU_CONCURRENCY_ID,
+    )
+    autogen_event = generation_event.then(
         fn=lambda *args: res_h.generate_next_batch_background(dit_handler, llm_handler, *args),
         inputs=[
             generation_section["autogen_checkbox"],
@@ -212,4 +217,14 @@ def register_generation_run_handlers(context: GenerationWiringContext) -> None:
             results_section["next_batch_status"],
             results_section["next_batch_btn"],
         ],
+        concurrency_id=GPU_CONCURRENCY_ID,
+    )
+
+    # Stop button: raise the cooperative stop flag so the diffusion loop aborts
+    # at its next step, and cancel the queued generation chain so the UI returns.
+    generation_section["stop_btn"].click(
+        fn=request_stop,
+        inputs=[],
+        outputs=[],
+        cancels=[clear_event, generation_event, autogen_event],
     )

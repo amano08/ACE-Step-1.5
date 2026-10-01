@@ -5,6 +5,11 @@ from loguru import logger
 
 from acestep.constants import MODE_TO_TASK_TYPE
 from acestep.ui.gradio.i18n import t
+from acestep.ui.gradio.interfaces.user_defaults import (
+    audio_cover_strength_default,
+    cover_noise_strength_default,
+    remix_only,
+)
 from .mode_ui_helpers import (
     _compute_automation_updates,
     _compute_field_updates_for_mode,
@@ -53,17 +58,26 @@ def compute_mode_ui_updates(mode: str, llm_handler=None, previous_mode: str = "C
         strength_label = t("generation.cover_strength_label")
         strength_info = t("generation.cover_strength_info")
     strength_kwargs = {"visible": show_strength, "label": strength_label, "info": strength_info}
+    # This handler runs on page load as well as on a mode switch, so hardcoding
+    # the stock cover values here would overwrite the launch-script preset that
+    # build_cover_strength_controls() just applied.
     if is_cover:
-        strength_kwargs["value"] = 0.0
+        strength_kwargs["value"] = audio_cover_strength_default(0.35)
     strength_update = gr.update(**strength_kwargs)
-    # Reset the value (not just hide) when leaving cover mode so a stale
-    # cover_noise_strength cannot leak into text2music (issue #1271).
-    cover_noise_update = gr.update(visible=is_cover, value=0.2) if is_cover else gr.update(visible=False, value=0.0)
+    cover_noise_update = (
+        gr.update(visible=True, value=cover_noise_strength_default(0.5))
+        if is_cover
+        else gr.update(visible=False)
+    )
 
     # Think checkbox
     lm_initialized = llm_handler.llm_initialized if llm_handler else False
     if is_extract or is_lego or is_cover or is_repaint:
-        think_update = gr.update(interactive=False, value=False, visible=not (is_extract or is_lego))
+        # This handler also runs on page load, so it would re-show the Think
+        # checkbox that _build_left_generate_toggles hides in Remix-only mode
+        # — where Think can never run at all.
+        think_visible = not (is_extract or is_lego) and not remix_only()
+        think_update = gr.update(interactive=False, value=False, visible=think_visible)
     elif not lm_initialized:
         think_update = gr.update(interactive=False, value=False, visible=True)
     else:

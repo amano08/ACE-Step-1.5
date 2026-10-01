@@ -53,6 +53,7 @@ except ImportError:
 # DCW (Differential Correction in Wavelet domain) — CVPR 2026.
 # Opt-in sampler-side correction for SNR-t bias; see the `dcw_*` kwargs
 # on `generate_audio` and docs/en/DCW.md for details.
+from acestep.generation_stop import raise_if_stopped
 from acestep.models.common.dcw_correction import DCWCorrector
 
 
@@ -2024,6 +2025,7 @@ class AceStepConditionGenerationModel(AceStepPreTrainedModel):
         _switched_to_non_cover = False
         with torch.no_grad():
             for step_idx, (t_curr, t_prev) in enumerate(iterator):
+                raise_if_stopped()
                 if step_idx >= cover_steps and not _switched_to_non_cover:
                     _switched_to_non_cover = True
                     if do_cfg_guidance:

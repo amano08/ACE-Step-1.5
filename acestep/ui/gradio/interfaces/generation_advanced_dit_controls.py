@@ -9,6 +9,8 @@ from acestep.ui.gradio.events.dcw_defaults import get_dcw_defaults_for_think
 from acestep.ui.gradio.help_content import create_help_button
 from acestep.ui.gradio.i18n import t
 
+from .user_defaults import guidance_scale_default, remix_only
+
 
 def build_dit_controls(ui_config: dict[str, Any], think_enabled: bool = False) -> dict[str, Any]:
     """Create DiT diffusion controls for advanced settings.
@@ -37,7 +39,9 @@ def build_dit_controls(ui_config: dict[str, Any], think_enabled: bool = False) -
             guidance_scale = gr.Slider(
                 minimum=1.0,
                 maximum=15.0,
-                value=7.0,
+                # The model-change handler only toggles this slider's visibility,
+                # never its value, so the preset survives a model reload.
+                value=guidance_scale_default() or 7.0,
                 step=0.1,
                 label=t("generation.guidance_scale_label"),
                 info=t("generation.guidance_scale_info"),
@@ -124,7 +128,10 @@ def build_dit_controls(ui_config: dict[str, Any], think_enabled: bool = False) -
                 value=False,
                 info=t("generation.use_adg_info"),
                 elem_classes=["has-info-container"],
-                visible=ui_config["use_adg_visible"],
+                # use_adg stops at generate_kwargs, which only the PyTorch
+                # generate_audio() consumes — it never reaches _mlx_run_diffusion,
+                # so the toggle does nothing on the MLX path.
+                visible=ui_config["use_adg_visible"] and not remix_only(),
             )
             shift = gr.Slider(
                 minimum=1.0,
@@ -187,8 +194,8 @@ def build_dit_controls(ui_config: dict[str, Any], think_enabled: bool = False) -
                 maximum=2048,
                 value=_gpu_config.mlx_vae_chunk_size,
                 step=64,
-                label="MLX VAE Chunk Size",
-                info="Larger = faster decode but more memory. Auto-detected based on your system.",
+                label=t("generation.mlx_vae_chunk_size_label"),
+                info=t("generation.mlx_vae_chunk_size_info"),
                 elem_classes=["has-info-container"],
             )
     return {

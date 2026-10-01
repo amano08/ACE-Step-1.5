@@ -11,6 +11,16 @@ from typing import Any, Mapping
 
 ComponentMap = Mapping[str, Any]
 
+# Every event that touches the GPU must share this concurrency id.
+# ``default_concurrency_limit=1`` only serializes each listener against itself,
+# so e.g. "analyze source audio" (MLX LM) could start while a flow-edit was
+# still running the DiT sampler.  Two Metal backends submitting command buffers
+# at once aborts the process with
+# ``[IOGPUMetalCommandBuffer validate]: commit an already committed command buffer``.
+# Sharing one id makes the queue run them back to back instead.
+# The stop button is deliberately excluded so it stays responsive.
+GPU_CONCURRENCY_ID = "acestep_gpu"
+
 _AUTO_CHECKBOX_OUTPUT_KEYS = (
     "bpm_auto",
     "key_auto",

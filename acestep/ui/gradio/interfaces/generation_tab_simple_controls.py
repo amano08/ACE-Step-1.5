@@ -41,7 +41,7 @@ def build_simple_input_controls() -> tuple[gr.Textbox, gr.Dropdown, gr.Checkbox]
         )
         simple_instrumental_checkbox = gr.Checkbox(
             label=t("generation.instrumental_label"),
-            value=False,
+            value=True,
             scale=1,
         )
     return simple_query_input, simple_vocal_language, simple_instrumental_checkbox

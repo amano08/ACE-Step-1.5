@@ -7,7 +7,7 @@ core generation and batch navigation orchestration.
 from typing import Any, Sequence
 
 from .. import results_handlers as res_h
-from .context import GenerationWiringContext
+from .context import GPU_CONCURRENCY_ID, GenerationWiringContext
 
 
 def register_results_aux_handlers(
@@ -60,6 +60,7 @@ def register_results_aux_handlers(
                 generation_section["flow_edit_source_lyrics"],
             ]
             + list(mode_ui_outputs),
+            concurrency_id=GPU_CONCURRENCY_ID,
         )
         results_section[f"send_to_repaint_btn_{btn_idx}"].click(
             fn=lambda audio, lm, ly, cap, cur_mode: res_h.send_audio_to_repaint(
@@ -83,6 +84,7 @@ def register_results_aux_handlers(
                 generation_section["seed"],
             ]
             + list(mode_ui_outputs),
+            concurrency_id=GPU_CONCURRENCY_ID,
         )
 
     # ========== Score Calculation Handlers ==========
@@ -117,6 +119,7 @@ def register_results_aux_handlers(
                 results_section[f"details_accordion_{btn_idx}"],
                 results_section["batch_queue"],
             ],
+            concurrency_id=GPU_CONCURRENCY_ID,
         )
 
     # ========== LRC Timestamp Handlers ==========
@@ -152,6 +155,7 @@ def register_results_aux_handlers(
                 results_section[f"details_accordion_{btn_idx}"],
                 results_section["batch_queue"],
             ],
+            concurrency_id=GPU_CONCURRENCY_ID,
         )
 
     # ========== Convert To Codes Handlers ==========
@@ -163,6 +167,7 @@ def register_results_aux_handlers(
                 results_section[f"codes_display_{btn_idx}"],
                 results_section[f"details_accordion_{btn_idx}"],
             ],
+            concurrency_id=GPU_CONCURRENCY_ID,
         )
 
     # ========== Save LRC Handlers ==========
